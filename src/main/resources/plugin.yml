@@ -1,0 +1,20 @@
+name: AutoBroadcast
+version: @version@
+main: dev.wnuke.autobroadcast.AutoBroadcast
+prefix: Auto Broadcast
+authors: [wnuke]
+description: Automatically sends a message every N units of time
+commands:
+  autobc:
+    description: Auto broadcast message manager
+permissions:
+  permissions:
+    autobc.list:
+      description: Lists messages
+      default: true
+    autobc.add:
+      description: Adds message
+      default: false
+    autobc.del:
+      description: Removes message
+      default: false
