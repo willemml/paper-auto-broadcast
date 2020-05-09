@@ -7,8 +7,10 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -18,17 +20,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class AutoBroadcast extends JavaPlugin {
+public final class AutoBroadcast extends JavaPlugin implements Listener {
 
     public static final String VERSION = "1.0.0";
     public static final String MESSAGESJSON = "messages.json";
     public static Map<String, String[]> messages = new HashMap<>();
-    public static ArrayList<AutoBroadcaster> broadcasters = new ArrayList<>();
+    public static ArrayList<BukkitTask> broadcasters = new ArrayList<>();
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     @Override
     public void onEnable() {
         this.getCommand("autobc").setExecutor(new AutoBroadcastCommand());
+        this.getServer().getPluginManager().registerEvents(this, this);
         try {
             messages = gson.fromJson(new FileReader(MESSAGESJSON), new TypeToken<Map<String, String[]>>(){}.getType());
             loadBroadcasters();
@@ -49,7 +52,7 @@ public final class AutoBroadcast extends JavaPlugin {
         broadcasters.clear();
         for (Map.Entry<String, String[]> message : messages.entrySet()) {
             if (NumberUtils.isNumber(message.getValue()[1])) {
-                broadcasters.add(new AutoBroadcaster(Integer.parseInt(message.getValue()[1]), message.getValue()[0]));
+                broadcasters.add(new AutoBroadcaster(message.getValue()[0], this).runTaskTimer(this, 20, Integer.parseInt(message.getValue()[1]) * 1200));;
             } else {
                 getLogger().warning("Message " + message.getKey() + " has an invalid delay.");
             }
@@ -70,22 +73,16 @@ public final class AutoBroadcast extends JavaPlugin {
     }
 
     private class AutoBroadcaster extends BukkitRunnable implements dev.wnuke.autobroadcast.AutoBroadcaster {
-        private long startTime = 0;
-        private int delay = 0;
+        private JavaPlugin plugin;
         private String message = "";
-        public AutoBroadcaster(int newDelay, String newMessage) {
-            delay = newDelay;
+        public AutoBroadcaster(String newMessage, JavaPlugin newPlugin) {
             message = newMessage;
+            plugin = newPlugin;
         }
 
         @Override
         public void run() {
-            if (startTime == 0)
-                startTime = System.currentTimeMillis();
-            if (startTime + (delay * 1000 * 60) <= System.currentTimeMillis()) { // 1 timeout = 1 second = 1000 ms
-                startTime = System.currentTimeMillis();
-                getServer().broadcastMessage(message);
-            }
+            plugin.getServer().broadcastMessage(message);
         }
     }
 
@@ -108,13 +105,17 @@ public final class AutoBroadcast extends JavaPlugin {
                         break;
                     case "add":
                         if (sender.hasPermission("autobc.add")) {
-                            if (args.length == 4) {
-                                if (NumberUtils.isNumber(args[3])) {
+                            if (args.length > 3) {
+                                if (NumberUtils.isNumber(args[2])) {
                                     try {
-                                        messages.put(args[1], new String[]{args[2], args[3]});
+                                        String message = "";
+                                        for (int i = 3; i < args.length; i++) {
+                                            message += args[i] + " ";
+                                        }
+                                        messages.put(args[1], new String[]{message, args[2]});
                                         writeMessagesJson();
                                         loadBroadcasters();
-                                        sender.sendMessage("Added message " + args[1] + " with contents \"" + args[2] + "\" and a delay of " + args[3]);
+                                        sender.sendMessage("Added message " + args[1] + " with contents \"" + message + "\" and a delay of " + args[2] + " minutes");
                                     } catch (IOException e) {
                                         sender.sendMessage("Failed to add message, could not write file.");
                                         e.printStackTrace();
@@ -123,7 +124,7 @@ public final class AutoBroadcast extends JavaPlugin {
                                     sender.sendMessage("Invalid argument " + args[3] + ", please make sure this is a number.");
                                 }
                             } else {
-                                sender.sendMessage("Invalid arguments, correct syntax is /autobc add <messageName> <message> <delay>");
+                                sender.sendMessage("Invalid arguments, correct syntax is /autobc add <messageName> <delay> <message>");
                             }
                         } else {
                             sender.sendMessage(MISSINGPERMISSION);
