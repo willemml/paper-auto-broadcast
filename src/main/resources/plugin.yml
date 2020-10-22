@@ -1,8 +1,8 @@
 name: AutoBroadcast
 version: @version@
-main: dev.wnuke.autobroadcast.AutoBroadcast
+main: net.willemml.autobroadcast.AutoBroadcast
 prefix: Auto Broadcast
-authors: [wnuke]
+authors: [willemml]
 description: Automatically sends a message every N units of time
 commands:
   autobc:

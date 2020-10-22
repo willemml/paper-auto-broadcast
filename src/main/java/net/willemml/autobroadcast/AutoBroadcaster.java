@@ -1,4 +1,4 @@
-package dev.wnuke.autobroadcast;
+package net.willemml.autobroadcast;
 
 public interface AutoBroadcaster {
     void run();
